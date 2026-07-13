@@ -1,0 +1,11 @@
+#################### FORCE FIELDS ####################
+pair_style  buck/omp 15
+pair_modify tail yes
+
+# Atoms types
+# 1 Ar
+
+# I J A [Kcal/mol] rho [A] C [kcal/mol A^6]
+pair_coeff 1 1 174226 0.342308 6625.76
+
+

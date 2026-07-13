@@ -1,0 +1,17 @@
+#################### FORCE FIELDS ####################
+pair_style hybrid yukawa/omp 0.008695528429003584 690.0098192983008 buck/omp 15.0
+pair_modify mix arithmetic tail yes
+
+# Atoms types
+# 1 Ar
+# 2 Ar +
+
+# Yukawa for ion–ion
+pair_coeff 2 2 yukawa/omp  332.062  
+
+# LJ for ion–neutral (should later add charge induced dipole)
+pair_coeff 1 2 buck/omp 174226 0.342308 6625.76
+
+# LJ for neutral–neutral
+pair_coeff 1 1 buck/omp 174226 0.342308 6625.76
+

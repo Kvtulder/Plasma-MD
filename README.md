@@ -95,5 +95,3 @@ lmp -in simulation.lammps
 | Argon | ionized | 13500 | 150 |
 | Xenon | nonionized | 3000 | 150 |
 | Xenon | ionized | 13000 | 150 |
-
-Temperatures for the ionized cases are chosen to give a physically relevant, weakly coupled degree of ionization; the nonionized cases serve as neutral-gas reference points.

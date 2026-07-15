@@ -93,5 +93,5 @@ lmp -in simulation.lammps
 |---|---|---|---|
 | Argon | nonionized | 1000 | 2000 |
 | Argon | ionized | 13500 | 150 |
-| Xenon | nonionized | 3000 | 150 |
+| Xenon | nonionized | 3000 | 2000 |
 | Xenon | ionized | 13000 | 150 |

@@ -14,34 +14,6 @@ The two workflows in this repository correspond to the two theoretical approache
 - `chapmanenskog.py` — analytical/numerical route (kinetic theory, collision integrals)
 - `Argon/`, `xenon/` — numerical route (LAMMPS MD simulations)
 
-## Repository structure
-
-```
-Plasma-MD/
-├── chapmanenskog.py           # Collision integral / kinetic theory solver
-├── Argon/
-│   ├── ionized/                # Partially ionized argon (Ar, Ar+)
-│   │   ├── simulation.lammps   # LAMMPS input script
-│   │   ├── forcefield.data     # Pair potentials (Yukawa + Morse)
-│   │   ├── data.lmp            # Initial configuration / topology
-│   │   └── job.sh              # SLURM batch script
-│   └── nonionized/             # Neutral argon baseline
-│       ├── simulation.lammps
-│       ├── forcefield.data     # Morse potential only
-│       ├── data.lmp
-│       └── job.sh
-└── xenon/
-    ├── ionized/                 # Partially ionized xenon (Xe, Xe+)
-    │   ├── simulation.lammps
-    │   ├── forcefield.data      # Yukawa + Buckingham
-    │   ├── data.lmp
-    │   └── job.sh
-    └── nonionized/              # Neutral xenon baseline
-        ├── simulation.lammps
-        ├── forcefield.data      # Buckingham potential only
-        ├── data.lmp
-        └── job.sh
-```
 
 ## Chapman-Enskog collision integral solver (`chapmanenskog.py`)
 

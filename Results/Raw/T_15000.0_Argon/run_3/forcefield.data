@@ -1,0 +1,15 @@
+#################### FORCE FIELDS ####################
+pair_style hybrid yukawa 0.006961316896157847 861.9058849786848 morse 15.0
+
+# Atoms types
+# 1 Ar
+# 2 Ar +
+
+# Yukawa for ion–ion
+pair_coeff 2 2 yukawa  332.062  
+
+# LJ for ion–neutral (should later add charge induced dipole)
+pair_coeff 1 2 morse 0.2781929649671031 1.675368490500967 3.76
+
+# LJ for neutral–neutral
+pair_coeff 1 1 morse 0.2781929649671031 1.675368490500967 3.76

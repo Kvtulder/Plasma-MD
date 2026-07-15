@@ -1,0 +1,11 @@
+#################### FORCE FIELDS ####################
+pair_style  lj/cut 15
+pair_modify mix arithmetic tail yes
+
+# Atoms types
+# 1 Ar
+
+# I J Epsilon [Kcal/mol] Sigma [Angstrom]
+pair_coeff 1 1 0.28066 3.336
+
+

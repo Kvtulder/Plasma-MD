@@ -1,0 +1,234 @@
+units real
+atom_style full
+boundary p p p
+
+# phase data
+variable Temp           equal   13000.0
+variable Pres           equal   1.0             # atm
+variable tstep          equal   1.0				# timestep for production runs (fs)
+
+# simulation control
+variable RandomSeed     equal   244
+variable Nthermo        equal   100000          # Number of timesteps between thermo output production
+variable tstep          equal   1.0             # timestep for production runs (fs)
+variable Ninptpre       equal   1000            # Pre-initialize the NPT ensemble (very small timesteps)
+variable Ninpt          equal   1000            # Initialize the NPT ensemble
+variable Npnpt          equal   100000          # Production in the NPT ensemble (volume)
+variable Ninvtpre       equal   1000            # Pre-initialize the NVT ensemble (very small timesteps)
+variable Ninvt          equal   100000         	# Initialize the NVT ensemble
+variable Npnvt          equal   100000        	# Production in the NVT ensemble (1 microsecond)
+variable Ninvepre       equal   1000            # Pre-initialize the NVE ensemble (very small timesteps)
+variable Ninve          equal   100000        	# Initialize the NVE ensemble
+variable Nrun           equal   1000000000      	# production in the NVT ensemble 1 microsecond
+variable NwriteF        equal   ${Nrun}/100     # Nwrite a 100 frames for the trajectory (dump)
+
+variable Nf             equal   100000          # Nfreq (fix ave/time and thermo)
+variable Ne             equal   20000           # Nevery (fix ave/time)
+variable Nr             equal   ${Nf}/${Ne}     # Nrepeat (fix ave/time)
+variable NBR            equal   ${Npnpt}/5      # Block averaging for density (NPT)
+
+# OCTP controls
+variable nb             equal   10              # Number of blocks (fix ordern)
+variable nbe            equal   20              # Number of block elements (fix ordern)
+variable Nwrit          equal   50000           # Nwrite for transport properties (fix ordern: write every (Nwrit))
+variable Nvisc          equal   ${Nwrit}/2      # Nwrite for outputting viscosities (fix ordern: compute every halve of Nwrit)
+
+variable skindist       equal   sqrt(${Temp}/10000)*28
+
+# Read in the data and force field files
+read_data data.lmp
+include forcefield.data
+
+# some general stuff
+group Ar type 1
+group Arplus type 2
+
+# neigbor lists
+neighbor ${skindist} multi
+neigh_modify one 500000 page 5000000
+
+comm_modify mode multi reduce/multi
+# velocity-Verlet integrator
+run_style verlet
+
+# minimizing the system using the conjugate gradient method
+min_style cg
+min_modify dmax 0.05 
+minimize 1.0e-6 1.0e-6 1000 10000
+reset_timestep 0
+
+# initializing velocities
+velocity all create ${Temp} ${RandomSeed}  
+
+#################### 1) Initialize the NPT ensemble ####################
+thermo ${Ninptpre}
+fix integrate all npt temp ${Temp} ${Temp} 10.0 iso ${Pres} ${Pres} 100.0
+
+# Initializing the whole system with very small timesteps in the NPT ensemble
+timestep 0.001
+run ${Ninptpre} 
+timestep 0.01
+run ${Ninptpre} 
+timestep 0.5
+run ${Ninptpre}
+timestep 1
+run ${Ninptpre}
+
+reset_timestep 0
+
+
+#################### 2) Equilibrating the NPT ensemble ####################
+unfix integrate
+fix integrate all npt temp ${Temp} ${Temp} 100.0 iso ${Pres} ${Pres} 1000.0
+timestep ${tstep}
+
+# sampling observables to check
+variable TotEn equal etotal
+variable PotEn equal pe
+variable KinEn equal ke
+variable Volume equal vol
+variable Dens equal density
+compute T all temp
+compute P all pressure T
+fix AveAll all ave/time ${Ne} ${Nr} ${Nf} v_TotEn v_PotEn c_T c_P file npt_equi.dat
+
+run ${Ninpt}
+unfix AveAll
+reset_timestep 0
+
+#################### 3) Production in NPT ######################
+# Getting the average volume of the system
+thermo ${Nthermo}
+fix VoluAve all ave/time 1 ${Npnpt} ${Npnpt} v_Volume file volume.dat
+fix DensAve all ave/time 1 ${Npnpt} ${Npnpt} v_Dens file density.dat
+fix AveAll all ave/time ${Ne} ${Nr} ${Nf} v_TotEn v_PotEn c_T c_P v_Dens file npt_prod.dat
+
+run ${Npnpt}
+unfix AveAll
+unfix DensAve
+
+#################### 4) Initializing the NVT ensemble ####################
+# scaling the size of the system to the average volume
+variable sidesize equal (f_VoluAve^(1.0/3.0))    # get the volume
+variable xlow equal xlo
+variable ylow equal ylo
+variable zlow equal zlo
+variable xhig equal (xlo+${sidesize})
+variable yhig equal (ylo+${sidesize})
+variable zhig equal (zlo+${sidesize})
+change_box all x final ${xlow} ${xhig} y final ${ylow} ${yhig} z final ${zlow} ${zhig}
+
+unfix VoluAve
+unfix integrate
+
+reset_timestep 0
+fix integrate all nvt temp ${Temp} ${Temp} 10.0
+
+# Initializing the whole system with very small timesteps in the NVT ensemble
+thermo ${Ninvtpre}
+timestep 0.001
+run ${Ninvtpre} 
+timestep 0.01
+run ${Ninvtpre} 
+timestep 0.1
+run ${Ninvtpre}
+reset_timestep 0
+
+
+#################### 5) Equilibrate the NVT ensemble ####################
+unfix integrate
+thermo ${Nthermo}
+fix integrate all nvt temp ${Temp} ${Temp} 100.0
+
+# balance 0.9 shift xyz 20 1.1 out tmp.balance
+
+timestep ${tstep}
+fix AveAll all ave/time ${Ne} ${Nr} ${Nf} v_TotEn v_PotEn c_T c_P file nvt_equi.dat
+
+run ${Ninvt}
+
+unfix AveAll
+reset_timestep 0
+
+
+
+#################### 6) Production in NVT #####################
+fix AveAll all ave/time ${Ne} ${Nr} ${Nf} v_TotEn v_PotEn c_T c_P file nvt_prod.dat
+
+fix TotEnAve all ave/time 1 ${Npnvt} ${Npnvt} v_TotEn
+fix TAve all ave/time 1 ${Npnvt} ${Npnvt} c_T
+fix KinEnAve all ave/time 1 ${Npnvt} ${Npnvt} v_KinEn
+fix PotEnAve all ave/time 1 ${Npnvt} ${Npnvt} v_PotEn
+
+run ${Npnvt}
+unfix AveAll
+
+
+#################### 7) Initializing the NVE ensemble ####################
+# scaling the size of the system to the average kinetic energy (temperature)
+variable TempNew equal (f_TAve*(f_TotEnAve-f_PotEnAve)/(f_KinEnAve))
+velocity all scale ${TempNew}
+
+unfix integrate
+unfix TotEnAve
+unfix TAve
+unfix KinEnAve
+unfix PotEnAve
+
+reset_timestep 0
+fix integrate all nve
+
+# Initializing the whole system with very small timesteps in the NVE ensemble
+thermo ${Ninvepre}
+timestep 0.001
+run ${Ninvepre} 
+timestep 0.01
+run ${Ninvepre}
+timestep 0.1
+run ${Ninvepre}
+
+reset_timestep 0
+
+#################### 8) Equilibrate the NVE ensemble ####################
+thermo ${Nthermo}
+
+timestep ${tstep}
+fix AveAll all ave/time ${Ne} ${Nr} ${Nf} v_TotEn v_PotEn c_T c_P file nve_equi.dat
+
+run ${Ninve}
+
+unfix AveAll
+reset_timestep 0
+
+#################### 9) Production in NVE #####################
+# computing average total energy, pontential energy, temperature, and pressure over time
+fix AveAll all ave/time ${Ne} ${Nr} ${Nf} v_TotEn v_PotEn c_T c_P file nve_prod.dat
+
+# computing self-diffusion and Onsager coefficients using the OCTP plugin
+compute positions all position
+fix f1 all ordern diffusivity ${Nwrit} ${Nwrit} c_positions nb ${nb} nbe ${nbe} file diffself.dat diffonsag.dat title "Ar"
+
+# computing shear and bulk viscosities  using the OCTP plugin
+fix f2 all ordern viscosity ${Nvisc} ${Nwrit} c_P nb ${nb} nbe ${nbe} file viscosity.dat title "Ar"
+
+# compute thermal conductivity
+compute KE all ke/atom
+compute PE all pe/atom
+compute ST all stress/atom NULL virial
+compute heatflux all heat/flux KE PE ST
+fix f3 all ordern thermalconductivity ${Nvisc} ${Nwrit} c_heatflux file thermal_conductivity.dat title "Ar"
+
+# Trajectory
+dump 1 all custom ${NwriteF} traj.lammpstrj id type x y z ix iy iz
+dump 2 all custom ${NwriteF} traj2.lammpstrj id type x y z
+
+restart ${Nrun} restart.restart
+run ${Nrun}
+run ${Nrun}
+
+unfix AveAll
+unfix f1
+unfix f2
+unfix f3
+
+quit
